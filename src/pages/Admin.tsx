@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Appointment } from "../types/Appointment";
+import type { Appointment, AppointmentStatus } from "../types/appointment";
 import AdminHeader from "../components/AdminHeader";
 import { API_URL } from "../services/api";
 const BARBERSHOP_SLUG = "toid";

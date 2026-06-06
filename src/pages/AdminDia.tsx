@@ -4,7 +4,7 @@ import AdminHeader from "../components/AdminHeader";
 import { API_URL } from "../services/api";
 const BARBERSHOP_SLUG = "toid";
 
-import type { Appointment, AppointmentStatus } from "../types/Appointment";
+import type { Appointment, AppointmentStatus } from "../types/appointment";
 
 export default function AdminDia() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
