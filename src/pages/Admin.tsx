@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Appointment, AppointmentStatus } from "../types/appointment";
+
+import type { Appointment } from "../types/appointment";
 import AdminHeader from "../components/AdminHeader";
 import { API_URL } from "../services/api";
+
 const BARBERSHOP_SLUG = "toid";
 
 type Filter = "today" | "tomorrow" | "week" | "month" | "all";
@@ -12,26 +14,26 @@ export default function Admin() {
   const [filter, setFilter] = useState<Filter>("today");
 
   useEffect(() => {
-  async function loadAppointments() {
-    try {
-      const response = await fetch(
-        `${API_URL}/barbershops/${BARBERSHOP_SLUG}/appointments`
-      );
+    async function loadAppointments() {
+      try {
+        const response = await fetch(
+          `${API_URL}/barbershops/${BARBERSHOP_SLUG}/appointments`
+        );
 
-      if (!response.ok) {
-        throw new Error("Erro ao carregar agendamentos");
+        if (!response.ok) {
+          throw new Error("Erro ao carregar agendamentos");
+        }
+
+        const data = await response.json();
+
+        setAppointments(data);
+      } catch (error) {
+        console.error("Erro ao buscar agendamentos:", error);
       }
-
-      const data = await response.json();
-
-      setAppointments(data);
-    } catch (error) {
-      console.error("Erro ao buscar agendamentos:", error);
     }
-  }
 
-  loadAppointments();
-}, []);
+    loadAppointments();
+  }, []);
 
   function getDateByOffset(days: number) {
     const date = new Date();
@@ -46,40 +48,26 @@ export default function Admin() {
   }
 
   function isDateInCurrentWeek(dateString: string) {
-  const appointmentDate = new Date(`${dateString}T00:00:00`);
+    const appointmentDate = new Date(`${dateString}T00:00:00`);
 
-  const today = new Date();
+    const today = new Date();
 
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
 
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
 
-  return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
-}
+    return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
+  }
 
   function isDateInCurrentMonth(dateString: string) {
     const appointmentDate = new Date(`${dateString}T00:00:00`);
     const today = new Date();
 
-    return (function isDateInCurrentWeek(dateString: string) {
-  const appointmentDate = new Date(`${dateString}T00:00:00`);
-
-  const today = new Date();
-
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
-}
+    return (
       appointmentDate.getMonth() === today.getMonth() &&
       appointmentDate.getFullYear() === today.getFullYear()
     );
@@ -155,246 +143,219 @@ export default function Admin() {
     0
   );
 
-  const activeAppointments = appointments.filter(
-  (appointment) => appointment.status !== "canceled"
-);
-
-const completedAppointments = appointments.filter(
-  (appointment) => appointment.status === "completed"
-);
-
-const pendingAppointments = appointments.filter(
-  (appointment) => appointment.status === "pending"
-);
-
-const canceledAppointments = appointments.filter(
-  (appointment) => appointment.status === "canceled"
-);
-
   return (
     <>
-    <AdminHeader />
-    <main className="min-h-screen bg-black text-white px-6 py-10">
-      <section className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-          <div>
-            <span className="text-zinc-400 uppercase tracking-widest">
-              Painel Administrativo
-            </span>
+      <AdminHeader />
 
-            <h1 className="text-4xl font-bold mt-3">
-              Dashboard da Barbearia
-            </h1>
-
-            <p className="text-zinc-400 mt-3">
-              Acompanhe os agendamentos e o faturamento da barbearia.
-            </p>
-          </div>
-
-          <Link
-            to="/admin/dia"
-            className="bg-white text-black px-5 py-3 rounded-lg font-semibold hover:scale-105 transition w-fit"
-          >
-            Painel do Dia
-          </Link>
-        </div>
-
-        {/* CARDS DE AGENDAMENTOS */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Agendamentos hoje</p>
-            <h2 className="text-4xl font-bold mt-2">
-              {todayAppointments.length}
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Agendamentos amanhã</p>
-            <h2 className="text-4xl font-bold mt-2">
-              {tomorrowAppointments.length}
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Agendamentos da semana</p>
-            <h2 className="text-4xl font-bold mt-2">
-              {weekAppointments.length}
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Agendamentos do mês</p>
-            <h2 className="text-4xl font-bold mt-2">
-              {monthAppointments.length}
-            </h2>
-          </div>
-        </div>
-
-        {/* CARDS DE FATURAMENTO */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Faturamento hoje</p>
-            <h2 className="text-3xl font-bold mt-2">
-              {formatCurrency(totalToday)}
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Faturamento amanhã</p>
-            <h2 className="text-3xl font-bold mt-2">
-              {formatCurrency(totalTomorrow)}
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Faturamento da semana</p>
-            <h2 className="text-3xl font-bold mt-2">
-              {formatCurrency(totalWeek)}
-            </h2>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-            <p className="text-zinc-400">Faturamento do mês</p>
-            <h2 className="text-3xl font-bold mt-2">
-              {formatCurrency(totalMonth)}
-            </h2>
-          </div>
-        </div>
-
-        {/* FILTROS */}
-        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <main className="min-h-screen bg-black text-white px-6 py-10">
+        <section className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
             <div>
-              <h2 className="text-2xl font-bold">
-                Agendamentos
-              </h2>
+              <span className="text-zinc-400 uppercase tracking-widest">
+                Painel Administrativo
+              </span>
 
-              <p className="text-zinc-400 mt-2">
-                Filtre os horários por hoje, amanhã, semana, mês ou todos.
+              <h1 className="text-4xl font-bold mt-3">
+                Dashboard da Barbearia
+              </h1>
+
+              <p className="text-zinc-400 mt-3">
+                Acompanhe os agendamentos e o faturamento da barbearia.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setFilter("today")}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                  filter === "today"
-                    ? "bg-white text-black"
-                    : "bg-zinc-900 text-white border border-zinc-800"
-                }`}
-              >
-                Hoje
-              </button>
+            <Link
+              to="/admin/dia"
+              className="bg-white text-black px-5 py-3 rounded-lg font-semibold hover:scale-105 transition w-fit"
+            >
+              Painel do Dia
+            </Link>
+          </div>
 
-              <button
-                onClick={() => setFilter("tomorrow")}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                  filter === "tomorrow"
-                    ? "bg-white text-black"
-                    : "bg-zinc-900 text-white border border-zinc-800"
-                }`}
-              >
-                Amanhã
-              </button>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Agendamentos hoje</p>
+              <h2 className="text-4xl font-bold mt-2">
+                {todayAppointments.length}
+              </h2>
+            </div>
 
-              <button
-                onClick={() => setFilter("week")}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                  filter === "week"
-                    ? "bg-white text-black"
-                    : "bg-zinc-900 text-white border border-zinc-800"
-                }`}
-              >
-                Semana
-              </button>
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Agendamentos amanhã</p>
+              <h2 className="text-4xl font-bold mt-2">
+                {tomorrowAppointments.length}
+              </h2>
+            </div>
 
-              <button
-                onClick={() => setFilter("month")}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                  filter === "month"
-                    ? "bg-white text-black"
-                    : "bg-zinc-900 text-white border border-zinc-800"
-                }`}
-              >
-                Mês
-              </button>
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Agendamentos da semana</p>
+              <h2 className="text-4xl font-bold mt-2">
+                {weekAppointments.length}
+              </h2>
+            </div>
 
-              <button
-                onClick={() => setFilter("all")}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                  filter === "all"
-                    ? "bg-white text-black"
-                    : "bg-zinc-900 text-white border border-zinc-800"
-                }`}
-              >
-                Todos
-              </button>
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Agendamentos do mês</p>
+              <h2 className="text-4xl font-bold mt-2">
+                {monthAppointments.length}
+              </h2>
             </div>
           </div>
-        </div>
 
-        {/* TABELA */}
-        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
-          {sortedFilteredAppointments.length === 0 ? (
-            <p className="text-zinc-400 p-6">
-              Nenhum agendamento encontrado para esse filtro.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-zinc-900 text-zinc-400">
-                  <tr>
-                    <th className="p-4">Cliente</th>
-                    <th className="p-4">Serviço</th>
-                    <th className="p-4">Profissional</th>
-                    <th className="p-4">Data</th>
-                    <th className="p-4">Horário</th>
-                    <th className="p-4">Valor</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {sortedFilteredAppointments.map((appointment) => (
-                    <tr
-                      key={appointment.id}
-                      className="border-t border-zinc-800 text-zinc-300"
-                    >
-                      <td className="p-4">
-                        {appointment.clientName}
-                      </td>
-
-                      <td className="p-4">
-                        {appointment.serviceName}
-                      </td>
-
-                      <td className="p-4">
-                        {appointment.professionalName}
-                        <br />
-                        <span className="text-sm text-zinc-500">
-                          {appointment.professionalSpecialty}
-                        </span>
-                      </td>
-
-                      <td className="p-4">
-                        {formatDate(appointment.date)}
-                      </td>
-
-                      <td className="p-4">
-                        {appointment.time}
-                      </td>
-
-                      <td className="p-4 font-semibold text-white">
-                        {formatCurrency(appointment.price)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Faturamento hoje</p>
+              <h2 className="text-3xl font-bold mt-2">
+                {formatCurrency(totalToday)}
+              </h2>
             </div>
-          )}
-        </div>
-      </section>
-    </main>
+
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Faturamento amanhã</p>
+              <h2 className="text-3xl font-bold mt-2">
+                {formatCurrency(totalTomorrow)}
+              </h2>
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Faturamento da semana</p>
+              <h2 className="text-3xl font-bold mt-2">
+                {formatCurrency(totalWeek)}
+              </h2>
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+              <p className="text-zinc-400">Faturamento do mês</p>
+              <h2 className="text-3xl font-bold mt-2">
+                {formatCurrency(totalMonth)}
+              </h2>
+            </div>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <h2 className="text-2xl font-bold">Agendamentos</h2>
+
+                <p className="text-zinc-400 mt-2">
+                  Filtre os horários por hoje, amanhã, semana, mês ou todos.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setFilter("today")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                    filter === "today"
+                      ? "bg-white text-black"
+                      : "bg-zinc-900 text-white border border-zinc-800"
+                  }`}
+                >
+                  Hoje
+                </button>
+
+                <button
+                  onClick={() => setFilter("tomorrow")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                    filter === "tomorrow"
+                      ? "bg-white text-black"
+                      : "bg-zinc-900 text-white border border-zinc-800"
+                  }`}
+                >
+                  Amanhã
+                </button>
+
+                <button
+                  onClick={() => setFilter("week")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                    filter === "week"
+                      ? "bg-white text-black"
+                      : "bg-zinc-900 text-white border border-zinc-800"
+                  }`}
+                >
+                  Semana
+                </button>
+
+                <button
+                  onClick={() => setFilter("month")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                    filter === "month"
+                      ? "bg-white text-black"
+                      : "bg-zinc-900 text-white border border-zinc-800"
+                  }`}
+                >
+                  Mês
+                </button>
+
+                <button
+                  onClick={() => setFilter("all")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                    filter === "all"
+                      ? "bg-white text-black"
+                      : "bg-zinc-900 text-white border border-zinc-800"
+                  }`}
+                >
+                  Todos
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+            {sortedFilteredAppointments.length === 0 ? (
+              <p className="text-zinc-400 p-6">
+                Nenhum agendamento encontrado para esse filtro.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-zinc-900 text-zinc-400">
+                    <tr>
+                      <th className="p-4">Cliente</th>
+                      <th className="p-4">Serviço</th>
+                      <th className="p-4">Profissional</th>
+                      <th className="p-4">Data</th>
+                      <th className="p-4">Horário</th>
+                      <th className="p-4">Valor</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {sortedFilteredAppointments.map((appointment) => (
+                      <tr
+                        key={appointment.id}
+                        className="border-t border-zinc-800 text-zinc-300"
+                      >
+                        <td className="p-4">{appointment.clientName}</td>
+
+                        <td className="p-4">{appointment.serviceName}</td>
+
+                        <td className="p-4">
+                          {appointment.professionalName}
+                          <br />
+                          <span className="text-sm text-zinc-500">
+                            {appointment.professionalSpecialty}
+                          </span>
+                        </td>
+
+                        <td className="p-4">
+                          {formatDate(appointment.date)}
+                        </td>
+
+                        <td className="p-4">{appointment.time}</td>
+
+                        <td className="p-4 font-semibold text-white">
+                          {formatCurrency(appointment.price)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
     </>
   );
 }
