@@ -46,28 +46,40 @@ export default function Admin() {
   }
 
   function isDateInCurrentWeek(dateString: string) {
-    const appointmentDate = new Date(`${dateString}T00:00:00`);
-    const today = new Date();
+  const appointmentDate = new Date(`${dateString}T00:00:00`);
 
-    const dayOfWeek = today.getDay();
-    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const today = new Date();
 
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() + diffToMonday);
-    startOfWeek.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
 
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
 
-    return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
-  }
+  return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
+}
 
   function isDateInCurrentMonth(dateString: string) {
     const appointmentDate = new Date(`${dateString}T00:00:00`);
     const today = new Date();
 
-    return (
+    return (function isDateInCurrentWeek(dateString: string) {
+  const appointmentDate = new Date(`${dateString}T00:00:00`);
+
+  const today = new Date();
+
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
+}
       appointmentDate.getMonth() === today.getMonth() &&
       appointmentDate.getFullYear() === today.getFullYear()
     );
