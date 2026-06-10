@@ -5,35 +5,127 @@ import type { Appointment } from "../types/appointment";
 import AdminHeader from "../components/AdminHeader";
 import { API_URL } from "../services/api";
 
-const BARBERSHOP_SLUG = "toid";
-
 type Filter = "today" | "tomorrow" | "week" | "month" | "all";
+
+type StoredBarbershop = {
+  id?: string;
+  name?: string;
+  slug?: string;
+};
+
+function getStoredBarbershopName() {
+  const storedBarbershop = localStorage.getItem("barbershop");
+
+  if (!storedBarbershop) {
+    return "Barbearia";
+  }
+
+  try {
+    const barbershop = JSON.parse(storedBarbershop) as StoredBarbershop;
+
+    return barbershop.name || "Barbearia";
+  } catch {
+    return "Barbearia";
+  }
+}
+
+function getStoredBarbershopSlug() {
+  const directSlug = localStorage.getItem("barbershopSlug");
+
+  if (directSlug) {
+    return directSlug;
+  }
+
+  const storedBarbershop = localStorage.getItem("barbershop");
+
+  if (storedBarbershop) {
+    try {
+      const barbershop = JSON.parse(
+        storedBarbershop
+      ) as StoredBarbershop;
+
+      if (barbershop.slug) {
+        return barbershop.slug;
+      }
+    } catch {
+      console.error("Não foi possível ler os dados da barbearia.");
+    }
+  }
+
+  const storedAdmin = localStorage.getItem("admin");
+
+  if (storedAdmin) {
+    try {
+      const admin = JSON.parse(storedAdmin) as {
+        barbershopSlug?: string;
+      };
+
+      return admin.barbershopSlug || null;
+    } catch {
+      console.error("Não foi possível ler os dados do administrador.");
+    }
+  }
+
+  return null;
+}
 
 export default function Admin() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [filter, setFilter] = useState<Filter>("today");
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [barbershopSlug] = useState<string | null>(() =>
+    getStoredBarbershopSlug()
+  );
+
+  const [barbershopName] = useState(() =>
+    getStoredBarbershopName()
+  );
 
   useEffect(() => {
     async function loadAppointments() {
+      if (!barbershopSlug) {
+        setErrorMessage(
+          "Não foi possível identificar a barbearia desta conta. Faça login novamente."
+        );
+
+        setLoading(false);
+        return;
+      }
+
       try {
+        setLoading(true);
+        setErrorMessage("");
+
         const response = await fetch(
-          `${API_URL}/barbershops/${BARBERSHOP_SLUG}/appointments`
+          `${API_URL}/barbershops/${barbershopSlug}/appointments`
         );
 
         if (!response.ok) {
-          throw new Error("Erro ao carregar agendamentos");
+          throw new Error("Erro ao carregar agendamentos.");
         }
 
         const data = await response.json();
 
+        if (!Array.isArray(data)) {
+          throw new Error("Resposta inválida do servidor.");
+        }
+
         setAppointments(data);
       } catch (error) {
         console.error("Erro ao buscar agendamentos:", error);
+
+        setErrorMessage(
+          "Não foi possível carregar os agendamentos da barbearia."
+        );
+      } finally {
+        setLoading(false);
       }
     }
 
     loadAppointments();
-  }, []);
+  }, [barbershopSlug]);
 
   function getDateByOffset(days: number) {
     const date = new Date();
@@ -49,18 +141,22 @@ export default function Admin() {
 
   function isDateInCurrentWeek(dateString: string) {
     const appointmentDate = new Date(`${dateString}T00:00:00`);
-
     const today = new Date();
 
     const startOfWeek = new Date(today);
+
     startOfWeek.setDate(today.getDate() - today.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
 
     const endOfWeek = new Date(startOfWeek);
+
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    return appointmentDate >= startOfWeek && appointmentDate <= endOfWeek;
+    return (
+      appointmentDate >= startOfWeek &&
+      appointmentDate <= endOfWeek
+    );
   }
 
   function isDateInCurrentMonth(dateString: string) {
@@ -75,6 +171,7 @@ export default function Admin() {
 
   function formatDate(dateString: string) {
     const [year, month, day] = dateString.split("-");
+
     return `${day}/${month}/${year}`;
   }
 
@@ -108,14 +205,16 @@ export default function Admin() {
     filter === "today"
       ? todayAppointments
       : filter === "tomorrow"
-      ? tomorrowAppointments
-      : filter === "week"
-      ? weekAppointments
-      : filter === "month"
-      ? monthAppointments
-      : appointments;
+        ? tomorrowAppointments
+        : filter === "week"
+          ? weekAppointments
+          : filter === "month"
+            ? monthAppointments
+            : appointments;
 
-  const sortedFilteredAppointments = [...filteredAppointments].sort((a, b) => {
+  const sortedFilteredAppointments = [
+    ...filteredAppointments,
+  ].sort((a, b) => {
     if (a.date === b.date) {
       return a.time.localeCompare(b.time);
     }
@@ -156,11 +255,12 @@ export default function Admin() {
               </span>
 
               <h1 className="text-4xl font-bold mt-3">
-                Dashboard da Barbearia
+                Dashboard da {barbershopName}
               </h1>
 
               <p className="text-zinc-400 mt-3">
-                Acompanhe os agendamentos e o faturamento da barbearia.
+                Acompanhe os agendamentos e o faturamento da
+                sua barbearia.
               </p>
             </div>
 
@@ -172,30 +272,48 @@ export default function Admin() {
             </Link>
           </div>
 
+          {errorMessage && (
+            <div className="mb-8 bg-red-500/10 border border-red-500 text-red-400 rounded-xl p-4">
+              {errorMessage}
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Agendamentos hoje</p>
+              <p className="text-zinc-400">
+                Agendamentos hoje
+              </p>
+
               <h2 className="text-4xl font-bold mt-2">
                 {todayAppointments.length}
               </h2>
             </div>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Agendamentos amanhã</p>
+              <p className="text-zinc-400">
+                Agendamentos amanhã
+              </p>
+
               <h2 className="text-4xl font-bold mt-2">
                 {tomorrowAppointments.length}
               </h2>
             </div>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Agendamentos da semana</p>
+              <p className="text-zinc-400">
+                Agendamentos da semana
+              </p>
+
               <h2 className="text-4xl font-bold mt-2">
                 {weekAppointments.length}
               </h2>
             </div>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Agendamentos do mês</p>
+              <p className="text-zinc-400">
+                Agendamentos do mês
+              </p>
+
               <h2 className="text-4xl font-bold mt-2">
                 {monthAppointments.length}
               </h2>
@@ -204,28 +322,40 @@ export default function Admin() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Faturamento hoje</p>
+              <p className="text-zinc-400">
+                Faturamento hoje
+              </p>
+
               <h2 className="text-3xl font-bold mt-2">
                 {formatCurrency(totalToday)}
               </h2>
             </div>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Faturamento amanhã</p>
+              <p className="text-zinc-400">
+                Faturamento amanhã
+              </p>
+
               <h2 className="text-3xl font-bold mt-2">
                 {formatCurrency(totalTomorrow)}
               </h2>
             </div>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Faturamento da semana</p>
+              <p className="text-zinc-400">
+                Faturamento da semana
+              </p>
+
               <h2 className="text-3xl font-bold mt-2">
                 {formatCurrency(totalWeek)}
               </h2>
             </div>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
-              <p className="text-zinc-400">Faturamento do mês</p>
+              <p className="text-zinc-400">
+                Faturamento do mês
+              </p>
+
               <h2 className="text-3xl font-bold mt-2">
                 {formatCurrency(totalMonth)}
               </h2>
@@ -235,17 +365,21 @@ export default function Admin() {
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
-                <h2 className="text-2xl font-bold">Agendamentos</h2>
+                <h2 className="text-2xl font-bold">
+                  Agendamentos
+                </h2>
 
                 <p className="text-zinc-400 mt-2">
-                  Filtre os horários por hoje, amanhã, semana, mês ou todos.
+                  Filtre os horários por hoje, amanhã, semana,
+                  mês ou todos.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
                 <button
+                  type="button"
                   onClick={() => setFilter("today")}
-                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
                     filter === "today"
                       ? "bg-white text-black"
                       : "bg-zinc-900 text-white border border-zinc-800"
@@ -255,8 +389,9 @@ export default function Admin() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setFilter("tomorrow")}
-                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
                     filter === "tomorrow"
                       ? "bg-white text-black"
                       : "bg-zinc-900 text-white border border-zinc-800"
@@ -266,8 +401,9 @@ export default function Admin() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setFilter("week")}
-                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
                     filter === "week"
                       ? "bg-white text-black"
                       : "bg-zinc-900 text-white border border-zinc-800"
@@ -277,8 +413,9 @@ export default function Admin() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setFilter("month")}
-                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
                     filter === "month"
                       ? "bg-white text-black"
                       : "bg-zinc-900 text-white border border-zinc-800"
@@ -288,8 +425,9 @@ export default function Admin() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setFilter("all")}
-                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
                     filter === "all"
                       ? "bg-white text-black"
                       : "bg-zinc-900 text-white border border-zinc-800"
@@ -302,7 +440,11 @@ export default function Admin() {
           </div>
 
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
-            {sortedFilteredAppointments.length === 0 ? (
+            {loading ? (
+              <p className="text-zinc-400 p-6">
+                Carregando agendamentos...
+              </p>
+            ) : sortedFilteredAppointments.length === 0 ? (
               <p className="text-zinc-400 p-6">
                 Nenhum agendamento encontrado para esse filtro.
               </p>
@@ -321,34 +463,48 @@ export default function Admin() {
                   </thead>
 
                   <tbody>
-                    {sortedFilteredAppointments.map((appointment) => (
-                      <tr
-                        key={appointment.id}
-                        className="border-t border-zinc-800 text-zinc-300"
-                      >
-                        <td className="p-4">{appointment.clientName}</td>
+                    {sortedFilteredAppointments.map(
+                      (appointment) => (
+                        <tr
+                          key={appointment.id}
+                          className="border-t border-zinc-800 text-zinc-300"
+                        >
+                          <td className="p-4">
+                            {appointment.clientName}
+                          </td>
 
-                        <td className="p-4">{appointment.serviceName}</td>
+                          <td className="p-4">
+                            {appointment.serviceName}
+                          </td>
 
-                        <td className="p-4">
-                          {appointment.professionalName}
-                          <br />
-                          <span className="text-sm text-zinc-500">
-                            {appointment.professionalSpecialty}
-                          </span>
-                        </td>
+                          <td className="p-4">
+                            {appointment.professionalName}
 
-                        <td className="p-4">
-                          {formatDate(appointment.date)}
-                        </td>
+                            <br />
 
-                        <td className="p-4">{appointment.time}</td>
+                            <span className="text-sm text-zinc-500">
+                              {
+                                appointment.professionalSpecialty
+                              }
+                            </span>
+                          </td>
 
-                        <td className="p-4 font-semibold text-white">
-                          {formatCurrency(appointment.price)}
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="p-4">
+                            {formatDate(appointment.date)}
+                          </td>
+
+                          <td className="p-4">
+                            {appointment.time}
+                          </td>
+
+                          <td className="p-4 font-semibold text-white">
+                            {formatCurrency(
+                              appointment.price
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    )}
                   </tbody>
                 </table>
               </div>
