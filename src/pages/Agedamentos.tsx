@@ -8,6 +8,7 @@ import type { Professional } from "../types/Professional";
 
 type AppointmentForm = {
   clientName: string;
+  clientPhone: string;
   serviceId: string;
   professionalId: string;
   date: string;
@@ -33,6 +34,7 @@ export default function Agendamentos() {
 
   const [formData, setFormData] = useState<AppointmentForm>({
     clientName: "",
+    clientPhone: "",
     serviceId: "",
     professionalId: "",
     date: "",
@@ -113,9 +115,7 @@ export default function Agendamentos() {
 
         if (!response.ok) {
           setAvailableTimes([]);
-          setErrorMessage(
-            getApiErrorMessage(responseData)
-          );
+          setErrorMessage(getApiErrorMessage(responseData));
           return;
         }
 
@@ -159,6 +159,23 @@ export default function Agendamentos() {
     return "Não foi possível realizar o agendamento.";
   }
 
+  function formatPhoneInput(value: string) {
+    const onlyNumbers = value.replace(/\D/g, "").slice(0, 11);
+
+    if (onlyNumbers.length <= 2) {
+      return onlyNumbers;
+    }
+
+    if (onlyNumbers.length <= 7) {
+      return `(${onlyNumbers.slice(0, 2)}) ${onlyNumbers.slice(2)}`;
+    }
+
+    return `(${onlyNumbers.slice(0, 2)}) ${onlyNumbers.slice(
+      2,
+      7
+    )}-${onlyNumbers.slice(7)}`;
+  }
+
   function handleChange(
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
@@ -172,7 +189,7 @@ export default function Agendamentos() {
 
       return {
         ...previousData,
-        [name]: value,
+        [name]: name === "clientPhone" ? formatPhoneInput(value) : value,
         time: shouldResetTime ? "" : previousData.time,
       };
     });
@@ -183,15 +200,15 @@ export default function Agendamentos() {
   }
 
   function handleTimeSelect(time: string) {
-  setFormData((previousData) => ({
-    ...previousData,
-    time,
-  }));
+    setFormData((previousData) => ({
+      ...previousData,
+      time,
+    }));
 
-  setConfirmed(false);
-  setErrorMessage("");
-  setSuccessMessage("");
-}
+    setConfirmed(false);
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,12 +219,20 @@ export default function Agendamentos() {
 
     if (
       !formData.clientName ||
+      !formData.clientPhone ||
       !formData.serviceId ||
       !formData.professionalId ||
       !formData.date ||
       !formData.time
     ) {
       setErrorMessage("Preencha todos os campos antes de confirmar.");
+      return;
+    }
+
+    const phoneNumbers = formData.clientPhone.replace(/\D/g, "");
+
+    if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
+      setErrorMessage("Informe um WhatsApp válido com DDD.");
       return;
     }
 
@@ -223,6 +248,7 @@ export default function Agendamentos() {
           },
           body: JSON.stringify({
             clientName: formData.clientName,
+            clientPhone: formData.clientPhone,
             serviceId: Number(formData.serviceId),
             professionalId: Number(formData.professionalId),
             date: formData.date,
@@ -243,6 +269,7 @@ export default function Agendamentos() {
 
       setFormData({
         clientName: "",
+        clientPhone: "",
         serviceId: "",
         professionalId: "",
         date: "",
@@ -321,6 +348,22 @@ export default function Agendamentos() {
 
               <div>
                 <label className="block mb-2 text-sm font-medium">
+                  WhatsApp
+                </label>
+
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  name="clientPhone"
+                  value={formData.clientPhone}
+                  onChange={handleChange}
+                  placeholder="(11) 99999-9999"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 outline-none focus:border-white"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium">
                   Serviço
                 </label>
 
@@ -389,47 +432,47 @@ export default function Agendamentos() {
               </div>
 
               <div>
-  <label className="block mb-2 text-sm font-medium">
-    Horário disponível
-  </label>
+                <label className="block mb-2 text-sm font-medium">
+                  Horário disponível
+                </label>
 
-  {!formData.serviceId || !formData.professionalId || !formData.date ? (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-500">
-      Selecione serviço, profissional e data para ver os horários.
-    </div>
-  ) : loadingTimes ? (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-500">
-      Carregando horários disponíveis...
-    </div>
-  ) : availableTimes.length === 0 ? (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-500">
-      Nenhum horário disponível para essa combinação.
-    </div>
-  ) : (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-      {availableTimes.map((time) => (
-        <button
-          key={time}
-          type="button"
-          onClick={() => handleTimeSelect(time)}
-          className={`py-3 rounded-lg border font-semibold transition cursor-pointer ${
-            formData.time === time
-              ? "bg-white text-black border-white"
-              : "bg-zinc-900 text-white border-zinc-800 hover:border-white"
-          }`}
-        >
-          {time}
-        </button>
-      ))}
-    </div>
-  )}
+                {!formData.serviceId || !formData.professionalId || !formData.date ? (
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-500">
+                    Selecione serviço, profissional e data para ver os horários.
+                  </div>
+                ) : loadingTimes ? (
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-500">
+                    Carregando horários disponíveis...
+                  </div>
+                ) : availableTimes.length === 0 ? (
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-500">
+                    Nenhum horário disponível para essa combinação.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {availableTimes.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => handleTimeSelect(time)}
+                        className={`py-3 rounded-lg border font-semibold transition cursor-pointer ${
+                          formData.time === time
+                            ? "bg-white text-black border-white"
+                            : "bg-zinc-900 text-white border-zinc-800 hover:border-white"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-  {formData.time && (
-    <p className="text-sm text-green-400 mt-3">
-      Horário selecionado: {formData.time}
-    </p>
-  )}
-</div>
+                {formData.time && (
+                  <p className="text-sm text-green-400 mt-3">
+                    Horário selecionado: {formData.time}
+                  </p>
+                )}
+              </div>
 
               <button
                 type="submit"
@@ -454,6 +497,11 @@ export default function Agendamentos() {
                 <p>
                   <span className="text-white font-semibold">Cliente:</span>{" "}
                   {formData.clientName || "Não informado"}
+                </p>
+
+                <p>
+                  <span className="text-white font-semibold">WhatsApp:</span>{" "}
+                  {formData.clientPhone || "Não informado"}
                 </p>
 
                 <p>

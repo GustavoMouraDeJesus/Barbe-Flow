@@ -120,6 +120,7 @@ class BusinessHoursUpdate(BaseModel):
 
 class AppointmentCreate(BaseModel):
     clientName: str = Field(min_length=2, max_length=150)
+    clientPhone: str = Field(min_length=8, max_length=20)
     serviceId: int
     professionalId: int
     date: str
@@ -178,6 +179,7 @@ def format_appointment(appointment: models.Appointment):
         "id": appointment.id,
         "barbershopId": appointment.barbershop_id,
         "clientName": appointment.client_name,
+        "clientPhone": appointment.client_phone,
         "serviceId": appointment.service_id,
         "serviceName": appointment.service_name,
         "serviceDurationMinutes": appointment.service_duration_minutes,
@@ -1237,6 +1239,7 @@ def create_barbershop_appointment(
         id=str(uuid4()),
         barbershop_id=barbershop.id,
         client_name=appointment_data.clientName.strip(),
+        client_phone=appointment_data.clientPhone.strip(),
         service_id=selected_service.id,
         service_name=selected_service.name,
         service_duration_minutes=service_duration_minutes,

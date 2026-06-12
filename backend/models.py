@@ -46,6 +46,7 @@ class Appointment(Base):
     barbershop_id = Column(String, ForeignKey("barbershops.id"), nullable=False)
 
     client_name = Column(String, nullable=False)
+    client_phone = Column(String, nullable=False)
 
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     service_name = Column(String, nullable=False)

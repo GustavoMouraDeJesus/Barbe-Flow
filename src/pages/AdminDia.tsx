@@ -126,6 +126,56 @@ export default function AdminDia() {
     });
   }
 
+  function formatDateToBrazilian(date: string) {
+    const [year, month, day] = date.split("-");
+
+    return `${day}/${month}/${year}`;
+  }
+
+  function getPhoneNumbers(phone?: string) {
+    return phone?.replace(/\D/g, "") || "";
+  }
+
+  function phoneIsValid(phone?: string) {
+    const phoneNumbers = getPhoneNumbers(phone);
+
+    return phoneNumbers.length >= 10 && phoneNumbers.length <= 13;
+  }
+
+  function getWhatsAppLink(appointment: Appointment) {
+    const phoneNumbers = getPhoneNumbers(appointment.clientPhone);
+
+    if (!phoneIsValid(appointment.clientPhone)) {
+      return "";
+    }
+
+    const phoneWithCountryCode = phoneNumbers.startsWith("55")
+      ? phoneNumbers
+      : `55${phoneNumbers}`;
+
+    const message = encodeURIComponent(
+      `Olá, ${appointment.clientName}! Tudo bem? Aqui é da barbearia. Estou entrando em contato sobre seu agendamento de ${appointment.serviceName} no dia ${formatDateToBrazilian(
+        appointment.date
+      )} às ${appointment.time}, você confirma o agendamento?`
+    );
+
+    return `https://api.whatsapp.com/send?phone=${phoneWithCountryCode}&text=${message}`;
+  }
+
+  function handleOpenWhatsApp(appointment: Appointment) {
+    const whatsappLink = getWhatsAppLink(appointment);
+
+    if (!whatsappLink) {
+      alert(
+        "Este agendamento não possui um WhatsApp válido. Verifique se o cliente informou o telefone com DDD."
+      );
+
+      return;
+    }
+
+    window.open(whatsappLink, "_blank", "noopener,noreferrer");
+  }
+
   async function updateAppointmentStatus(
     appointmentId: string,
     status: AppointmentStatus
@@ -326,7 +376,7 @@ export default function AdminDia() {
                 {todayAppointments.map((appointment) => (
                   <div
                     key={appointment.id}
-                    className="p-6 grid lg:grid-cols-6 gap-6 items-center"
+                    className="p-6 grid lg:grid-cols-7 gap-6 items-center"
                   >
                     <div>
                       <p className="text-zinc-500 text-sm">
@@ -336,6 +386,30 @@ export default function AdminDia() {
                       <p className="text-lg font-semibold text-white">
                         {appointment.clientName}
                       </p>
+                    </div>
+
+                    <div>
+                      <p className="text-zinc-500 text-sm">
+                        WhatsApp
+                      </p>
+
+                      <p className="text-lg font-semibold text-white">
+                        {appointment.clientPhone || "Não informado"}
+                      </p>
+
+                      {phoneIsValid(appointment.clientPhone) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWhatsApp(appointment)}
+                          className="text-sm text-green-400 hover:underline cursor-pointer"
+                        >
+                          Chamar no WhatsApp
+                        </button>
+                      ) : (
+                        <p className="text-sm text-zinc-600">
+                          Sem WhatsApp válido
+                        </p>
+                      )}
                     </div>
 
                     <div>
