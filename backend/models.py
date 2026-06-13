@@ -18,6 +18,18 @@ class Barbershop(Base):
     name = Column(String, nullable=False)
     slug = Column(String, unique=True, nullable=False, index=True)
 
+    primary_color = Column(String, nullable=False, default="#ffffff")
+    secondary_color = Column(String, nullable=False, default="#000000")
+    welcome_text = Column(String, nullable=False, default="Agende seu horário")
+    description = Column(
+        String,
+        nullable=False,
+        default="Escolha o serviço, o profissional, a data e veja os horários disponíveis.",
+    )
+    instagram = Column(String, nullable=True)
+    whatsapp = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+
 
 class Service(Base):
     __tablename__ = "services"
@@ -70,6 +82,17 @@ class Admin(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     barbershop_id = Column(String, ForeignKey("barbershops.id"), nullable=False)
+
+
+
+class GalleryImage(Base):
+    __tablename__ = "gallery_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    barbershop_id = Column(String, ForeignKey("barbershops.id"), nullable=False)
+    image_url = Column(String, nullable=False)
+    original_filename = Column(String, nullable=True)
+    created_at = Column(String, nullable=False)
 
 
 class BusinessHour(Base):

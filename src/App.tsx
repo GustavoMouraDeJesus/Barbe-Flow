@@ -12,6 +12,8 @@ import AdminRegister from "./pages/AdminRegister";
 import AdminServices from "./pages/AdminServices";
 import AdminProfessionals from "./pages/AdminProfessionals";
 import AdminFuncionamento from "./pages/AdminFuncionamento";
+import AdminAparencia from "./pages/AdminAparencia";
+import AdminGaleria from "./pages/AdminGaleria";
 
 function App() {
   const location = useLocation();
@@ -86,6 +88,24 @@ function App() {
   element={
     <ProtectedRoute>
       <AdminFuncionamento />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/aparencia"
+  element={
+    <ProtectedRoute>
+      <AdminAparencia />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/galeria"
+  element={
+    <ProtectedRoute>
+      <AdminGaleria />
     </ProtectedRoute>
   }
 />

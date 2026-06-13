@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { API_URL } from "../services/api";
 import type { Service } from "../types/Service";
 import type { Professional } from "../types/Professional";
+import type { Barbershop } from "../types/Barbershop";
 
 type AppointmentForm = {
   clientName: string;
@@ -28,6 +29,7 @@ export default function Agendamentos() {
     return new Date().toISOString().split("T")[0];
   }, []);
 
+  const [barbershop, setBarbershop] = useState<Barbershop | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
@@ -55,6 +57,10 @@ export default function Agendamentos() {
         setLoadingData(true);
         setErrorMessage("");
 
+        const barbershopResponse = await fetch(
+          `${API_URL}/barbershops/${barbershopSlug}`
+        );
+
         const servicesResponse = await fetch(
           `${API_URL}/barbershops/${barbershopSlug}/services`
         );
@@ -63,13 +69,19 @@ export default function Agendamentos() {
           `${API_URL}/barbershops/${barbershopSlug}/professionals`
         );
 
-        if (!servicesResponse.ok || !professionalsResponse.ok) {
+        if (
+          !barbershopResponse.ok ||
+          !servicesResponse.ok ||
+          !professionalsResponse.ok
+        ) {
           throw new Error("Erro ao carregar dados da barbearia.");
         }
 
+        const barbershopData = await barbershopResponse.json();
         const servicesData = await servicesResponse.json();
         const professionalsData = await professionalsResponse.json();
 
+        setBarbershop(barbershopData);
         setServices(servicesData);
         setProfessionals(professionalsData);
       } catch (error) {
@@ -288,8 +300,16 @@ export default function Agendamentos() {
     }
   }
 
+  const primaryColor = barbershop?.primaryColor || "#ffffff";
+  const secondaryColor = barbershop?.secondaryColor || "#000000";
+
   return (
-    <main className="min-h-screen bg-black text-white pt-28 px-6">
+    <main
+      className="min-h-screen text-white pt-28 px-6"
+      style={{
+        backgroundColor: secondaryColor,
+      }}
+    >
       <section className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <span className="text-zinc-400 uppercase tracking-widest">
@@ -297,16 +317,27 @@ export default function Agendamentos() {
           </span>
 
           <h1 className="text-4xl font-bold mt-3">
-            Agende seu horário
+            {barbershop?.welcomeText || "Agende seu horário"}
           </h1>
 
           <p className="text-zinc-400 mt-4">
-            Escolha o serviço, o profissional, a data e veja os horários disponíveis.
+            {barbershop?.description ||
+              "Escolha o serviço, o profissional, a data e veja os horários disponíveis."}
           </p>
 
           <p className="text-zinc-500 mt-2 text-sm">
-            Barbearia: {barbershopSlug}
+            Barbearia: {barbershop?.name || barbershopSlug}
           </p>
+
+          {(barbershop?.address ||
+            barbershop?.instagram ||
+            barbershop?.whatsapp) && (
+            <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm text-zinc-400">
+              {barbershop.address && <span>{barbershop.address}</span>}
+              {barbershop.instagram && <span>{barbershop.instagram}</span>}
+              {barbershop.whatsapp && <span>{barbershop.whatsapp}</span>}
+            </div>
+          )}
         </div>
 
         {errorMessage && (
@@ -455,9 +486,17 @@ export default function Agendamentos() {
                         key={time}
                         type="button"
                         onClick={() => handleTimeSelect(time)}
+                        style={
+                          formData.time === time
+                            ? {
+                                backgroundColor: primaryColor,
+                                borderColor: primaryColor,
+                              }
+                            : undefined
+                        }
                         className={`py-3 rounded-lg border font-semibold transition cursor-pointer ${
                           formData.time === time
-                            ? "bg-white text-black border-white"
+                            ? "text-black"
                             : "bg-zinc-900 text-white border-zinc-800 hover:border-white"
                         }`}
                       >
@@ -482,7 +521,10 @@ export default function Agendamentos() {
                   professionals.length === 0 ||
                   !formData.time
                 }
-                className="bg-white text-black py-4 rounded-lg font-semibold hover:scale-[1.02] transition disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: primaryColor,
+                }}
+                className="text-black py-4 rounded-lg font-semibold hover:scale-[1.02] transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? "AGENDANDO..." : "CONFIRMAR AGENDAMENTO"}
               </button>

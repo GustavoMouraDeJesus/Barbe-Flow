@@ -304,8 +304,24 @@ export default function Admin() {
               >
                 Painel do Dia
               </Link>
+
+              <Link
+  to="/admin/aparencia"
+  className="bg-zinc-900 text-white border border-zinc-700 px-5 py-3 rounded-lg font-semibold hover:bg-zinc-800 transition w-fit"
+>
+  Aparência da página
+</Link>
+
+<Link
+  to="/admin/galeria"
+  className="bg-zinc-900 text-white border border-zinc-700 px-5 py-3 rounded-lg font-semibold hover:bg-zinc-800 transition w-fit"
+>
+  Galeria da Barbearia
+</Link>
             </div>
           </div>
+
+          
 
           {publicBookingLink && (
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 mb-8">

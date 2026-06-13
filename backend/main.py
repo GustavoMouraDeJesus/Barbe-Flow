@@ -1,13 +1,15 @@
 import re
 import unicodedata
 
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
@@ -24,6 +26,16 @@ import models
 app = FastAPI(
     title="Sistema de Barbearia",
     version="1.0.0",
+)
+
+
+UPLOADS_DIR = Path("uploads/gallery")
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
 )
 
 SECRET_KEY = "troque-essa-chave-por-uma-chave-segura"
@@ -65,6 +77,20 @@ class AdminRegister(BaseModel):
 class AdminLogin(BaseModel):
     email: str
     password: str
+
+
+# ==================================================
+# SCHEMAS DE APARÊNCIA DA BARBEARIA
+# ==================================================
+
+class BarbershopAppearanceUpdate(BaseModel):
+    primaryColor: str = Field(min_length=4, max_length=20)
+    secondaryColor: str = Field(min_length=4, max_length=20)
+    welcomeText: str = Field(min_length=2, max_length=120)
+    description: str = Field(min_length=2, max_length=300)
+    instagram: str | None = Field(default=None, max_length=255)
+    whatsapp: str | None = Field(default=None, max_length=30)
+    address: str | None = Field(default=None, max_length=255)
 
 
 # ==================================================
@@ -140,6 +166,24 @@ def format_barbershop(barbershop: models.Barbershop):
         "id": barbershop.id,
         "name": barbershop.name,
         "slug": barbershop.slug,
+        "primaryColor": barbershop.primary_color,
+        "secondaryColor": barbershop.secondary_color,
+        "welcomeText": barbershop.welcome_text,
+        "description": barbershop.description,
+        "instagram": barbershop.instagram,
+        "whatsapp": barbershop.whatsapp,
+        "address": barbershop.address,
+    }
+
+
+
+def format_gallery_image(image: models.GalleryImage):
+    return {
+        "id": image.id,
+        "barbershopId": image.barbershop_id,
+        "imageUrl": image.image_url,
+        "originalFilename": image.original_filename,
+        "createdAt": image.created_at,
     }
 
 
@@ -681,6 +725,13 @@ def seed_initial_data():
                 id="barbearia-001",
                 name="TOID Barbearia",
                 slug="toid",
+                primary_color="#ffffff",
+                secondary_color="#000000",
+                welcome_text="Agende seu horário na TOID Barbearia",
+                description="Escolha seu serviço, profissional e horário disponível.",
+                instagram="@toidbarbearia",
+                whatsapp="11999999999",
+                address="São Paulo - SP",
             )
 
             db.add(toid)
@@ -698,6 +749,13 @@ def seed_initial_data():
                 id="barbearia-002",
                 name="Barbearia Corte Fino",
                 slug="corte-fino",
+                primary_color="#facc15",
+                secondary_color="#111111",
+                welcome_text="Agende seu horário na Barbearia Corte Fino",
+                description="Atendimento profissional com praticidade.",
+                instagram="@cortefino",
+                whatsapp="11999999999",
+                address="São Paulo - SP",
             )
 
             db.add(corte_fino)
@@ -999,6 +1057,30 @@ def get_barbershop(
     )
 
     return format_barbershop(barbershop)
+
+
+
+@app.get("/barbershops/{slug}/gallery")
+def get_barbershop_gallery(
+    slug: str,
+    db: Session = Depends(get_db),
+):
+    barbershop = get_barbershop_by_slug(
+        db,
+        slug,
+    )
+
+    images = (
+        db.query(models.GalleryImage)
+        .filter(
+            models.GalleryImage.barbershop_id
+            == barbershop.id
+        )
+        .order_by(models.GalleryImage.id.desc())
+        .all()
+    )
+
+    return [format_gallery_image(image) for image in images]
 
 
 @app.get("/barbershops/{slug}/services")
@@ -1356,6 +1438,203 @@ def get_admin_profile(
             else None
         ),
     }
+
+
+
+
+# ==================================================
+# ADMIN — GALERIA
+# ==================================================
+
+@app.get("/admin/gallery")
+def get_admin_gallery(
+    current_admin: models.Admin = Depends(
+        get_current_admin
+    ),
+    db: Session = Depends(get_db),
+):
+    images = (
+        db.query(models.GalleryImage)
+        .filter(
+            models.GalleryImage.barbershop_id
+            == current_admin.barbershop_id
+        )
+        .order_by(models.GalleryImage.id.desc())
+        .all()
+    )
+
+    return [format_gallery_image(image) for image in images]
+
+
+@app.post("/admin/gallery")
+async def upload_admin_gallery_image(
+    file: UploadFile = File(...),
+    current_admin: models.Admin = Depends(
+        get_current_admin
+    ),
+    db: Session = Depends(get_db),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Envie um arquivo de imagem válido.",
+        )
+
+    original_filename = file.filename or "imagem"
+    extension = Path(original_filename).suffix.lower()
+
+    if extension not in [".jpg", ".jpeg", ".png", ".webp"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Use imagens JPG, PNG ou WEBP.",
+        )
+
+    safe_filename = f"{uuid4()}{extension}"
+    file_path = UPLOADS_DIR / safe_filename
+
+    file_content = await file.read()
+
+    max_size_in_bytes = 5 * 1024 * 1024
+
+    if len(file_content) > max_size_in_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="A imagem deve ter no máximo 5MB.",
+        )
+
+    file_path.write_bytes(file_content)
+
+    new_image = models.GalleryImage(
+        barbershop_id=current_admin.barbershop_id,
+        image_url=f"/uploads/gallery/{safe_filename}",
+        original_filename=original_filename,
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    )
+
+    db.add(new_image)
+    db.commit()
+    db.refresh(new_image)
+
+    return format_gallery_image(new_image)
+
+
+@app.delete("/admin/gallery/{image_id}")
+def delete_admin_gallery_image(
+    image_id: int,
+    current_admin: models.Admin = Depends(
+        get_current_admin
+    ),
+    db: Session = Depends(get_db),
+):
+    image = (
+        db.query(models.GalleryImage)
+        .filter(
+            models.GalleryImage.id == image_id,
+            models.GalleryImage.barbershop_id
+            == current_admin.barbershop_id,
+        )
+        .first()
+    )
+
+    if not image:
+        raise HTTPException(
+            status_code=404,
+            detail="Imagem não encontrada.",
+        )
+
+    image_url = image.image_url
+
+    if image_url.startswith("/uploads/gallery/"):
+        filename = image_url.replace("/uploads/gallery/", "")
+        file_path = UPLOADS_DIR / filename
+
+        if file_path.exists():
+            file_path.unlink()
+
+    db.delete(image)
+    db.commit()
+
+    return {
+        "message": "Imagem removida com sucesso."
+    }
+
+
+# ==================================================
+# ADMIN — APARÊNCIA DA BARBEARIA
+# ==================================================
+
+@app.get("/admin/appearance")
+def get_admin_appearance(
+    current_admin: models.Admin = Depends(
+        get_current_admin
+    ),
+    db: Session = Depends(get_db),
+):
+    barbershop = (
+        db.query(models.Barbershop)
+        .filter(
+            models.Barbershop.id
+            == current_admin.barbershop_id
+        )
+        .first()
+    )
+
+    if not barbershop:
+        raise HTTPException(
+            status_code=404,
+            detail="Barbearia não encontrada",
+        )
+
+    return format_barbershop(barbershop)
+
+
+@app.put("/admin/appearance")
+def update_admin_appearance(
+    appearance_data: BarbershopAppearanceUpdate,
+    current_admin: models.Admin = Depends(
+        get_current_admin
+    ),
+    db: Session = Depends(get_db),
+):
+    barbershop = (
+        db.query(models.Barbershop)
+        .filter(
+            models.Barbershop.id
+            == current_admin.barbershop_id
+        )
+        .first()
+    )
+
+    if not barbershop:
+        raise HTTPException(
+            status_code=404,
+            detail="Barbearia não encontrada",
+        )
+
+    barbershop.primary_color = appearance_data.primaryColor
+    barbershop.secondary_color = appearance_data.secondaryColor
+    barbershop.welcome_text = appearance_data.welcomeText.strip()
+    barbershop.description = appearance_data.description.strip()
+    barbershop.instagram = (
+        appearance_data.instagram.strip()
+        if appearance_data.instagram
+        else None
+    )
+    barbershop.whatsapp = (
+        appearance_data.whatsapp.strip()
+        if appearance_data.whatsapp
+        else None
+    )
+    barbershop.address = (
+        appearance_data.address.strip()
+        if appearance_data.address
+        else None
+    )
+
+    db.commit()
+    db.refresh(barbershop)
+
+    return format_barbershop(barbershop)
 
 
 # ==================================================
