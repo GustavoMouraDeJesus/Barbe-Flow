@@ -9,8 +9,8 @@ export default function Header() {
                 <div className="max-w-2xl">
                     <span className="text-zinc-300 uppercase tracking-widest">Bem-vindo</span>
 
-                    <h1 className="text-6xl font-bold mt-4 leading-tight text-red-500">
-                        Se estilo começa aqui.
+                    <h1 className="text-6xl font-bold mt-4 leading-tight text-zinc-300">
+                        Seu estilo começa aqui.
                     </h1>
 
                     <p className="text-zinc-300 text-lg mt-6">
